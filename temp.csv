@@ -1,0 +1,5 @@
+owner;repo;yaml_filename;job;all_unused;maven_unused;fix_suggestion;old_commands
+jhy;jsoup;build.yml;test (ubuntu-latest, 17);2;2;`mvn -B verify --file pom.xml`;mvn -X verify -B --file pom.xml
+owner;repo;yaml_filename;job;all_unused;maven_unused;fix_suggestion;old_commands
+jhy;jsoup;build.yml;test (ubuntu-latest, 17);2;2;`mvn -B verify --file pom.xml`;mvn -X verify -B --file pom.xml
+jhy;jsoup;build.yml;test (ubuntu-latest, 17);2;2;mvn verify -B --file pom.xml;mvn -X verify -B --file pom.xml
