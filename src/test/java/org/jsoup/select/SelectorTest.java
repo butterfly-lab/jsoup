@@ -8,7 +8,9 @@ import org.jsoup.parser.Parser;
 import org.junit.jupiter.api.Test;
 
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -396,6 +398,19 @@ public class SelectorTest {
         String h = "<div id=1><p>Hello<p><b>there</b></p></div><div id=2><span>Hi</span></div>";
         Document doc = Jsoup.parse(h);
         Elements divChilds = doc.select("div > *");
+        assertEquals(3, divChilds.size());
+        assertEquals("p", divChilds.get(0).tagName());
+        assertEquals("p", divChilds.get(1).tagName());
+        assertEquals("span", divChilds.get(2).tagName());
+    }
+
+    @Test public void streamParentChildStar() {
+        String h = "<div id=1><p>Hello<p><b>there</b></p></div><div id=2><span>Hi</span></div>";
+        Document doc = Jsoup.parse(h);
+
+        List<Element> divChilds = doc.selectStream("div > *")
+            .collect(Collectors.toList());
+
         assertEquals(3, divChilds.size());
         assertEquals("p", divChilds.get(0).tagName());
         assertEquals("p", divChilds.get(1).tagName());
@@ -1267,7 +1282,7 @@ public class SelectorTest {
         // https://github.com/jhy/jsoup/issues/2073
         Document doc = Jsoup.parse("<div id=parent><span class=child></span><span class=child></span><span class=child></span></div>");
         String q = "#parent [class*=child], .some-other-selector .nested";
-        assertEquals("(Or (And (Parent (Id '#parent'))(AttributeWithValueContaining '[class*=child]'))(And (Class '.nested')(Parent (Class '.some-other-selector'))))", EvaluatorDebug.sexpr(q));
+        assertEquals("(Or (And (AttributeWithValueContaining '[class*=child]')(Ancestor (Id '#parent')))(And (Class '.nested')(Ancestor (Class '.some-other-selector'))))", EvaluatorDebug.sexpr(q));
         Elements els = doc.select(q);
         assertEquals(3, els.size());
     }

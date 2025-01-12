@@ -5,7 +5,7 @@
 
   <groupId>org.jsoup</groupId>
   <artifactId>jsoup</artifactId>
-  <version>1.18.2-SNAPSHOT</version><!-- remember to update previous version below for japicmp -->
+  <version>1.19.1-SNAPSHOT</version><!-- remember to update previous version below for japicmp -->
   <url>https://jsoup.org/</url>
   <description>jsoup is a Java library that simplifies working with real-world HTML and XML. It offers an easy-to-use API for URL fetching, data parsing, extraction, and manipulation using DOM API methods, CSS, and xpath selectors. jsoup implements the WHATWG HTML5 specification, and parses HTML to the same DOM as modern browsers.</description>
   <inceptionYear>2009</inceptionYear>
@@ -38,29 +38,27 @@
 
   <build>
     <plugins>
-      <!-- Compile -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.13.0</version>
         <configuration>
           <encoding>UTF-8</encoding>
+          <useIncrementalCompilation>false</useIncrementalCompilation>
           <compilerArgs>
-            <!-- saves output for package-info.java, so mvn sees it has completed it, so incremental compile works -->
             <arg>-Xpkginfo:always</arg>
           </compilerArgs>
-          <!-- this means incremental = true... -->
-          <useIncrementalCompilation>false</useIncrementalCompilation>
         </configuration>
         <executions>
+          <!-- Disable the default compile, so the profiles activated below execute -->
           <execution>
-            <id>compile-java-8</id>
-            <configuration>
-              <source>1.8</source>
-              <target>1.8</target>
-            </configuration>
+            <id>default-compile</id>
+            <phase>none</phase>
           </execution>
-          <!-- There is a JDK 9+ profile execution below, which adds multi-release=true and compiles module-info -->
+          <execution>
+            <id>default-testCompile</id>
+            <phase>none</phase>
+          </execution>
         </executions>
       </plugin>
 
@@ -71,7 +69,7 @@
         <version>1.24</version>
         <executions>
           <execution>
-            <id>animal-sniffer</id>
+            <id>api-java8</id>
             <phase>compile</phase>
             <goals>
               <goal>check</goal>
@@ -82,10 +80,25 @@
                 <artifactId>java18</artifactId>
                 <version>1.0</version>
               </signature>
+              <ignores>
+                <ignore>java.net.HttpURLConnection</ignore><!-- .setAuthenticator(java.net.Authenticator) in Java 9; only used in multirelease 9+ version -->
+                <ignore>java.net.http.*</ignore><!-- HttpClient in Java 11; only used in multirelease 11+ version -->
+              </ignores>
+            </configuration>
+          </execution>
+          <execution>
+            <id>api-android21</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <configuration>
               <signature>
-                <groupId>net.sf.androidscents.signature</groupId>
-                <artifactId>android-api-level-10</artifactId>
-                <version>2.3.3_r2</version>
+                <groupId>com.toasttab.android</groupId>
+                <artifactId>gummy-bears-api-21</artifactId>
+                <version>0.10.0</version>
+                <!-- <classifier>coreLib2</classifier> -->
+                <!-- ^^ https://github.com/open-toast/gummy-bears says coreLib2 classifier for desugar should work, but I can't seem to wrangle Animal Sniffer to support that, so reverting to ignores for desugar -->
               </signature>
               <ignores>
                 <ignore>java.io.File</ignore> <!-- File#toPath() -->
@@ -93,11 +106,11 @@
                 <ignore>java.nio.channels.SeekableByteChannel</ignore>
                 <ignore>java.util.function.*</ignore>
                 <ignore>java.util.stream.*</ignore>
-                <ignore>java.lang.Throwable</ignore> <!-- Throwable#addSuppressed(Throwable) -->
                 <ignore>java.lang.ThreadLocal</ignore>
                 <ignore>java.io.UncheckedIOException</ignore>
                 <ignore>java.util.Comparator</ignore> <!-- Comparator.comparingInt() -->
                 <ignore>java.util.List</ignore> <!-- List#stream() -->
+                <ignore>java.util.ArrayList</ignore> <!-- List / ArrayList #sort() -->
                 <ignore>java.util.LinkedHashMap</ignore> <!-- LinkedHashMap#computeIfAbsent() -->
                 <ignore>java.util.Map</ignore> <!-- Map#computeIfAbsent() -->
                 <ignore>java.util.Objects</ignore>
@@ -106,11 +119,13 @@
                 <ignore>java.util.Spliterator</ignore>
                 <ignore>java.util.Spliterators</ignore>
                 <ignore>java.nio.ByteBuffer</ignore> <!-- .flip(); added in API1; possibly due to .flip previously returning Buffer, later ByteBuffer; return unused -->
-
                 <ignore>java.net.HttpURLConnection</ignore><!-- .setAuthenticator(java.net.Authenticator) in Java 9; only used in multirelease 9+ version -->
+                <!-- HttpClient and following in Java 11; only used in multirelease 11+ version, guarded and not on Android -->
+                <ignore>java.net.http.*</ignore>
+                <ignore>java.time.Duration</ignore>
+                <ignore>java.util.OptionalLong</ignore>
               </ignores>
-              <!-- ^ Provided by https://developer.android.com/studio/write/java8-support#library-desugaring
-               Possibly OK to remove androidscents; keep for now to validate other additions are supported. -->
+              <!-- ^ Provided by https://developer.android.com/studio/write/java8-support#library-desugaring -->
             </configuration>
           </execution>
         </executions>
@@ -118,7 +133,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.10.0</version>
+        <version>3.11.2</version>
         <configuration>
           <doclint>none</doclint>
           <source>8</source>
@@ -165,10 +180,41 @@
             </manifestEntries>
             <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
           </archive>
-          <excludes>
-            <exclude>org/jsoup/examples/**</exclude>
-          </excludes>
         </configuration>
+        <executions>
+          <execution>
+            <id>default-jar</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+            <configuration>
+              <excludes>
+                <exclude>org/jsoup/examples/**</exclude>
+              </excludes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>jar-examples</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+            <configuration>
+              <classifier>examples</classifier>
+              <includes>
+                <include>org/jsoup/**</include>
+                <include>org/jsoup/examples/**</include>
+              </includes>
+              <archive>
+                <manifest>
+                  <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                  <mainClass>org.jsoup.examples.HtmlToPlainText</mainClass>
+                </manifest>
+              </archive>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.felix</groupId>
@@ -203,7 +249,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.5.0</version>
+        <version>3.5.2</version>
         <configuration>
           <!-- smaller stack to find stack overflows. Was 256, but Zulu on MacOS ARM needs >= 640 -->
           <argLine>-Xss640k</argLine>
@@ -211,7 +257,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <version>3.5.0</version>
+        <version>3.5.2</version>
         <executions>
           <execution>
             <goals>
@@ -236,7 +282,7 @@
             <dependency>
               <groupId>org.jsoup</groupId>
               <artifactId>jsoup</artifactId>
-              <version>1.18.1</version>
+              <version>1.18.3</version>
               <type>jar</type>
             </dependency>
           </oldVersion>
@@ -246,8 +292,9 @@
             <breakBuildOnBinaryIncompatibleModifications>true</breakBuildOnBinaryIncompatibleModifications>
             <breakBuildOnSourceIncompatibleModifications>true</breakBuildOnSourceIncompatibleModifications>
             <excludes>
-              <exclude>@java.lang.Deprecated</exclude>
+              <!-- <exclude>@java.lang.Deprecated</exclude> -->
               <exclude>org.jsoup.UncheckedIOException</exclude>
+              <exclude>org.jsoup.nodes.Element</exclude> <!-- forEach previously deprecated -->
             </excludes>
             <overrideCompatibilityChangeParameters>
               <!-- allows new default and move to default methods. compatible as long as existing binaries aren't making calls via reflection. if so, they need to catch errors anyway. -->
@@ -277,12 +324,10 @@
     <resources>
       <resource>
         <directory>./</directory>
-        <targetPath>META-INF/</targetPath>
+        <targetPath>META-INF/jsoup/</targetPath>
         <filtering>false</filtering>
         <includes>
           <include>LICENSE</include>
-          <include>README.md</include>
-          <include>CHANGES</include>
         </includes>
       </resource>
     </resources>
@@ -302,11 +347,11 @@
   </distributionManagement>
 
   <profiles>
-    <!-- Compiles the multi-release jar when executed on JDK9+ -->
+    <!-- Profile for Java 8 -->
     <profile>
-      <id>compile-multi-release</id>
+      <id>java-8</id>
       <activation>
-        <jdk>[9,2000)</jdk>
+        <jdk>1.8</jdk>
       </activation>
       <build>
         <plugins>
@@ -315,27 +360,94 @@
             <artifactId>maven-compiler-plugin</artifactId>
             <executions>
               <execution>
+                <id>compile</id>
+                <phase>compile</phase>
+                <goals>
+                  <goal>compile</goal>
+                  <goal>testCompile</goal>
+                </goals>
+                <configuration>
+                  <source>1.8</source>
+                  <target>1.8</target>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- Compiles the multi-release jar when executed on JDK11+ -->
+    <profile>
+      <id>compile-multi-release</id>
+      <activation>
+        <jdk>[11,2000)</jdk>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <executions>
+
+              <execution>
                 <id>compile-java-8</id>
+                <phase>compile</phase>
+                <goals>
+                  <goal>compile</goal>
+                  <goal>testCompile</goal>
+                </goals>
                 <configuration>
                   <release>8</release>
                 </configuration>
               </execution>
+
               <execution>
-                <id>compile-java-9</id>
+                <id>compile-java-11</id>
                 <phase>compile</phase>
                 <goals>
                   <goal>compile</goal>
                 </goals>
                 <configuration>
-                  <release>9</release>
+                  <release>11</release>
                   <compileSourceRoots>
-                    <compileSourceRoot>${project.basedir}/src/main/java9</compileSourceRoot>
+                    <compileSourceRoot>${project.basedir}/src/main/java11</compileSourceRoot>
                   </compileSourceRoots>
                   <multiReleaseOutput>true</multiReleaseOutput>
                 </configuration>
               </execution>
+
+              <!-- Tests for multi-release jar on 11: mark tests to be compiled; then and add to class path -->
+              <execution>
+                <id>testcompile-java-11</id>
+                <phase>test-compile</phase>
+                <goals>
+                  <goal>testCompile</goal>
+                </goals>
+                <configuration>
+                  <release>11</release>
+
+                  <compileSourceRoots>
+                    <compileSourceRoot>${project.basedir}/src/test/java11</compileSourceRoot>
+                  </compileSourceRoots>
+                </configuration>
+              </execution>
+
             </executions>
           </plugin>
+
+          <!-- Add the Java 11-specific test directory to the test runtime classpath -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <additionalClasspathElements>
+                <additionalClasspathElement>${project.build.outputDirectory}/META-INF/versions/11</additionalClasspathElement>
+              </additionalClasspathElements>
+              <useModulePath>false</useModulePath>  <!-- tests use classpath -->
+            </configuration>
+          </plugin>
+
         </plugins>
       </build>
     </profile>
@@ -372,7 +484,7 @@
         <plugins>
           <plugin>
             <artifactId>maven-failsafe-plugin</artifactId>
-            <version>3.5.0</version>
+            <version>3.5.2</version>
             <executions>
               <execution>
                 <goals>
@@ -393,7 +505,7 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <version>5.11.0</version>
+      <version>5.11.4</version>
       <scope>test</scope>
     </dependency>
 
